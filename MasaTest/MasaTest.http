@@ -1,0 +1,11 @@
+@MasaTest_HostAddress = http://localhost:5261
+
+GET {{MasaTest_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{MasaTest_HostAddress}}/todos/1
+Accept: application/json
+
+###

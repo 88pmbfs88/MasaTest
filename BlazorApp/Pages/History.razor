@@ -1,0 +1,152 @@
+﻿@page "/"
+@using System.Text.Json
+@inject HttpClient httpClient
+
+<style>
+
+    input[type="datetime-local"] {
+        padding: 8px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        width: 100%;
+    }
+
+</style>
+
+
+<div class="d-flex align-center justify-md-center mb-1 px-5">
+    <MForm EnableValidation OnValidSubmit="QueryHistroySubmit">
+        <MSelect @bind-Value="_title"
+                 Items="@_todoNames"
+                 ItemValue="r => r"
+                 ItemText="r => r"
+                 Label="名称"></MSelect>
+
+        <MSelect @bind-Value="_selectState"
+                 Items="_states"
+                 ItemValue="r => r"
+                 ItemText="r => r"
+                 Label="状态"></MSelect>
+
+        <MButton class="justify-center blue darken-3 mb-5" Style="width:100%;"  Loading="@_queryLoading" Type="submit">
+            <MIcon Dark>
+                mdi-card-bulleted-outline
+            </MIcon> 查询
+        </MButton>
+    </MForm>
+</div>
+
+
+@if (pageListResult != null)
+{
+    @if (pageListResult.Length > 0)
+    {
+        <MDataTable Dense Stripe Headers="_headers"
+                    Items="pageListResult"
+                    Locale="zh-CN"
+                    Loading="@_queryLoading"
+                    LoadingText="努力加载中"
+                    HideDefaultFooter
+                    Class="elevation-1">
+            <ItemColContent>
+                @if (context.Header.Value == nameof(Todo.Result))
+                {
+                    <MChip Color="@GetColor(context.Item.Result)" Dark>
+                        @context.Item.Result
+                    </MChip>
+                }
+                else
+                {
+                    @context.Value
+                }
+            </ItemColContent>
+
+        </MDataTable>
+    }
+    else
+    {
+        <MDataTable Stripe Headers="_headers"
+                    Items="pageListResult"
+                    Locale="zh-CN"
+                    Loading="@_queryLoading"
+                    LoadingText="努力加载中"
+                    HideDefaultFooter
+                    Class="elevation-1"></MDataTable>
+
+    }
+}
+
+@code {
+
+    private bool _queryLoading = false;
+    private string? _title;
+
+    private string? _selectState = "全部";
+    private readonly string[] _states = ["全部", "合格", "失效"];
+    private string[] _todoNames = ["全部"];
+
+    private Todo[]? pageListResult;
+
+    private List<DataTableHeader<Todo>> _headers =
+    [
+        new ()
+            {
+            Text= "序号",
+            Align= DataTableHeaderAlign.Start,
+            Sortable= false,
+            Value= nameof(Todo.Id)
+            },
+    new (){ Text= "名称", Value= nameof(Todo.Title)},
+    new (){ Text= "结果", Value= nameof(Todo.Result)},
+    new (){ Text= "状态", Value= nameof(Todo.IsComplete)},
+    ];
+
+
+    protected async override Task OnInitializedAsync()
+    {
+
+        try
+        {
+            _todoNames = await httpClient.GetFromJsonAsync<string[]>("/todos/title");
+            _title = _todoNames[0];
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+    }
+
+    private async Task QueryHistroySubmit()
+    {
+        _queryLoading = true;
+
+        pageListResult = null;
+        try
+        {
+            pageListResult = await httpClient.GetFromJsonAsync<Todo[]>($"/todos?Title={_title}&Result={_selectState}");
+        }
+        catch (Exception e)
+        {
+        }
+        finally
+        {
+            _queryLoading = false;
+            StateHasChanged();
+        }
+
+    }
+
+    public string GetColor(string result)
+    {
+        if (result == "合格")
+            return "green";
+        return "red";
+    }
+
+
+    public record Todo(int Id, string? Title, string? Result, DateOnly? DueBy = null, bool IsComplete = false);
+
+
+}
